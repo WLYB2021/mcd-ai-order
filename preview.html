@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>麦麦AI点单助手 · AI2UI 预览</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --card:#ffffff; --line:#e6e8eb; --text:#1f2329; --sub:#6b7280;
+    --brand:#ffc72c; --brand-d:#e6a700; --red:#e74c3c; --green:#2e9e5b; --chip:#fff4d6;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text);padding:24px}
+  .wrap{max-width:1080px;margin:0 auto}
+  .head{display:flex;align-items:center;gap:12px;margin-bottom:6px}
+  .logo{width:42px;height:42px;border-radius:12px;background:var(--brand);display:flex;align-items:center;justify-content:center;font-size:22px}
+  h1{font-size:22px}
+  .tag{font-size:12px;color:var(--sub);background:var(--chip);padding:2px 8px;border-radius:999px}
+  .note{font-size:12px;color:var(--sub);margin:8px 0 18px}
+  .store{display:flex;gap:8px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin-bottom:18px}
+  .store b{font-size:14px}
+  .store .pill{font-size:12px;color:#fff;background:var(--brand-d);padding:2px 8px;border-radius:999px}
+  .grid{display:grid;grid-template-columns:1.6fr 1fr;gap:18px}
+  .menu{display:flex;flex-direction:column;gap:12px}
+  .cat{font-size:13px;color:var(--sub);margin:6px 2px 0}
+  .item{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;justify-content:space-between;align-items:center}
+  .item .name{font-size:15px;font-weight:600}
+  .item .meta{font-size:12px;color:var(--sub);margin-top:4px}
+  .chips{margin-top:6px;display:flex;gap:6px;flex-wrap:wrap}
+  .chip{font-size:11px;background:var(--chip);color:#8a6d00;padding:2px 7px;border-radius:999px}
+  .price{font-size:16px;font-weight:700;color:var(--red);white-space:nowrap}
+  .cart{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;align-self:start;position:sticky;top:24px}
+  .cart h2{font-size:16px;margin-bottom:12px}
+  .row{display:flex;justify-content:space-between;font-size:14px;padding:7px 0;border-bottom:1px dashed var(--line)}
+  .row .m{color:var(--sub);font-size:12px}
+  .disc{color:var(--green)}
+  .total{display:flex;justify-content:space-between;align-items:baseline;margin-top:12px;padding-top:10px;border-top:2px solid var(--line)}
+  .total .big{font-size:22px;font-weight:800;color:var(--red)}
+  .btn{margin-top:14px;width:100%;background:var(--brand);color:#3a2c00;border:none;border-radius:12px;padding:12px;font-size:15px;font-weight:700;cursor:pointer}
+  .btn:hover{background:var(--brand-d)}
+  .hint{font-size:11px;color:var(--sub);margin-top:8px;text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head">
+    <div class="logo">🍔</div>
+    <h1>麦麦AI点单助手</h1>
+    <span class="tag">AI2UI · 对话即界面</span>
+  </div>
+  <div class="note">⚠️ 以下为 UI 形态预览，数据均为示例，仅用于展示；真实菜单/价格来自麦当劳 MCP 实时接口。</div>
+
+  <div class="store">
+    📍 <b>国贸 TR 餐厅</b> <span class="pill">到店自取</span>
+    <span style="color:var(--sub);font-size:12px">由 <code>query-nearby-stores</code> 选择</span>
+  </div>
+
+  <div class="grid">
+    <div class="menu">
+      <div class="cat">人气套餐</div>
+      <div class="item">
+        <div>
+          <div class="name">麦辣鸡腿堡套餐</div>
+          <div class="meta">鸡腿堡 + 薯条(中) + 饮料，可替换</div>
+          <div class="chips"><span class="chip">🔥 约 780 kcal</span><span class="chip">可换饮料</span></div>
+        </div>
+        <div class="price">¥32.5</div>
+      </div>
+      <div class="item">
+        <div>
+          <div class="name">巨无霸套餐</div>
+          <div class="meta">巨无霸 + 薯条(中) + 饮料</div>
+          <div class="chips"><span class="chip">🔥 约 840 kcal</span><span class="chip">经典</span></div>
+        </div>
+        <div class="price">¥41.0</div>
+      </div>
+      <div class="cat">单点</div>
+      <div class="item">
+        <div>
+          <div class="name">麦辣鸡腿堡</div>
+          <div class="meta">单品</div>
+          <div class="chips"><span class="chip">🔥 约 490 kcal</span></div>
+        </div>
+        <div class="price">¥21.0</div>
+      </div>
+      <div class="item">
+        <div>
+          <div class="name">可乐(中)</div>
+          <div class="meta">饮料</div>
+          <div class="chips"><span class="chip">🥤 冰/常温</span></div>
+        </div>
+        <div class="price">¥9.0</div>
+      </div>
+    </div>
+
+    <div class="cart">
+      <h2>🛒 购物车</h2>
+      <div class="row"><span>麦辣鸡腿堡套餐(可乐)</span><span>¥32.5</span></div>
+      <div class="row"><span class="m">− 麦麦省券</span><span class="disc">-¥5.0</span></div>
+      <div class="row"><span class="m">配送费(到店免)</span><span>¥0.0</span></div>
+      <div class="total"><span>应付</span><span class="big">¥27.5</span></div>
+      <button class="btn">确认结账 →</button>
+      <div class="hint">由 <code>calculate-price</code> 实时算价，确认后 <code>create-order</code> 下单</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
