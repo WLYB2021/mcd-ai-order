@@ -7,7 +7,15 @@ description: 在 WorkBuddy 对话里直接浏览麦当劳菜单、选餐加购�
 
 把麦当劳点餐做成"**对话即界面（AI2UI）**"：用户不用打开 App，在 WorkBuddy 里一句话就能看菜单、选餐、算最便宜的价格、确认后下单，并**在对话内直接拿到支付链接/二维码完成付款**。底层全部走麦当劳官方 MCP（`mcd-mcp`）。
 
-> 本 Skill 针对首版体验做了 5 项关键改进：① 信息一次性收集；② 选店时同步展示活动与预约能力；③ 进点餐主动拉券+活动、菜单带图；④ 一张总单确认；⑤ 下单后对话内直接支付，无需跳转 App。
+## 设计要点（针对 WorkBuddy 面板限制优化）
+
+> ⚠️ **图片限制**：WorkBuddy 内联面板（`show_widget`）出于安全/沙箱限制**不会加载外部图片 URL**，因此 `<img src="https://...">` 在面板里永远空白。本 Skill 据此做如下约定，保证任何环境下都有完整呈现：
+> - 门店 / 菜单 / 购物车 / 订单 / 支付卡片一律用 **emoji 图标 + 文字** 渲染（名称、单价、标签、描述、链接），**不使用 `<img>`**，面板永远有内容、不空白。
+> - 餐品真实图片：把 `query-meal-detail.image` 的 URL 作为 **Markdown 链接** 附在聊天气泡里（如 `🖼 [巨无霸](https://menu-img.mcd.cn/...)`），用户点按即在浏览器打开原图。
+> - 面板卡片内可放 `<a href="{image}">查看图片 ↗</a>` 文字链接（链接比图片更可能被放行）。
+> - 视觉 Demo：`preview.html` 用浏览器打开，内嵌真实 `<img>`（浏览器允许加载），用于对外展示界面形态。
+
+针对首版体验还做了 5 项关键改进：① 信息一次性收集；② 选店时同步展示活动与预约能力；③ 进点餐主动拉券+活动；④ 一张总单确认；⑤ 下单后对话内直接支付，无需跳转 App。
 
 ## 前置条件
 
@@ -20,7 +28,7 @@ description: 在 WorkBuddy 对话里直接浏览麦当劳菜单、选餐加购�
 |---|---|---|
 | query-nearby-stores | `beType`, `searchType=2`, `city`, `keyword` | `storeCode` / `storeName` / `address` / `distance` / `businessStatus` / **`reservation`(bool)** / **`reservationTimeOptions[]`** |
 | query-meals | `storeCode`, `orderType`, `beType` | `categories[].meals[].code` / `tags`（**只给 code+tags，无名称/价格**） |
-| query-meal-detail | `+code` | `name` / **`image`（真实 https URL，可渲染）** / `rounds` / `modification` / `supportModify` |
+| query-meal-detail | `+code` | `name` / **`image`（真实 https URL，仅做浏览器链接，不在面板内嵌）** / `rounds` / `modification` / `supportModify` |
 | calculate-price | `storeCode`, `orderType`, `beType`, `items[{productCode, quantity, ...}]`, `takeWayCode` | `price` **单位为「分」，÷100=元**；`productPrice`/`discount`/`takeWayList[].code` |
 | query-store-coupons | `storeCode`, `orderType`, `beType` | `data[]`: `title` / `couponId` / `couponCode` / `products[]` / `tradeDateTime` |
 | campaign-calendar | 无 | `dailyList[].events[]`: `activityTitle` / `price` / `articleDto{title,content,imgList,buttonText,appJumpUrl}` |
@@ -30,6 +38,7 @@ description: 在 WorkBuddy 对话里直接浏览麦当劳菜单、选餐加购�
 | auto-bind-coupons | 无 | 一键领取全部可领麦麦省券 |
 
 **beType / orderType 映射**（由用户选择的用餐方式决定）：
+
 - 到店自取 → `beType=1`, `orderType=1`
 - 得来速 (DT) → `beType=5`, `orderType=1`
 - 麦乐送外送 → `beType=2`, `orderType=2`
@@ -48,21 +57,20 @@ description: 在 WorkBuddy 对话里直接浏览麦当劳菜单、选餐加购�
 - **Q3 手机号**：自由文本（用"其他"输入）→ `phone`（仅用于下单身份，不展示原文、不持久化）
 - **Q4 位置 / 收货地址**：到店填"无"或"城市+地标"(如"北京 国贸")；外送填详细收货地址 → `city`+`keyword` 或 `address`
 
-在问题下方用自然语言补充说明：城市用于搜店、本次信息仅会话内暂存。
-解析为会话上下文 `ctx = {beType, orderType, name, phone, city, keyword/address}`，后续步骤直接复用，**不再逐个追问**。
+在问题下方用自然语言补充说明：城市用于搜店、本次信息仅会话内暂存。解析为会话上下文 `ctx = {beType, orderType, name, phone, city, keyword/address, storeCode?, reservationDate?}`，后续步骤直接复用，**不再逐个追问**。
 
 ### 第 1 步 · 选店 + 活动通报（解决"应展示各店活动/预约"）
 
 1. 调用 `query-nearby-stores`（`beType`, `searchType=2`, `city`, `keyword`）→ 取前 3–5 家候选门店。
    - 外送场景改为：`delivery-query-addresses` / `delivery-create-address` 确定 `addressId` 与地址 → `delivery-query-stores` 拿 `beCode`。
-2. 调用 `campaign-calendar`() → 取今天 / 本月活动，整理为"**今日可参与活动**"面板（标题 + 优惠 + 领券入口 `appJumpUrl`）。
-3. 用 `show_widget` 渲染**门店卡片 + 活动面板**：
-   - 门店卡：店名 / 地址 / 距离 / 营业中? / **预约**（`reservation=true` 时展示 `reservationTimeOptions` 的日期+时段，如"夜市 17:14–21:45"）
-   - 活动卡：活动标题 / 优惠力度 / "立即领券"入口
+2. 调用 `campaign-calendar()` → 取今天 / 本月活动，整理为"**今日可参与活动**"面板（标题 + 优惠 + 领券入口 `appJumpUrl`）。
+3. 用 `show_widget` 渲染**门店卡片 + 活动面板**（emoji + 文字，不内嵌图片）：
+   - 门店卡：📍 店名 / 地址 / 距离 / 营业中? / **预约**（`reservation=true` 时展示 `reservationTimeOptions` 的日期+时段，如"夜市 17:14–21:45"）
+   - 活动卡：🎉 活动标题 / 优惠力度 / "立即领券"入口（链接 `appJumpUrl`）
 4. `AskUserQuestion` 让用户**选门店 + 确认用餐方式**；若 `reservation=true` 且用户想预约，引导其在 `reservationTimeOptions` 中选日期+时段，记录 `reservationDate`（后续传给 `query-meals`/`calculate-price`/`create-order`）。
 5. 记下 `storeCode`（及外送的 `beCode`/`addressId`）。
 
-### 第 2 步 · 主动拉优惠+活动 + 带图菜单（解决"应主动给券/活动"+"图片不显示"）
+### 第 2 步 · 主动拉优惠+活动 + 菜单（解决"应主动给券/活动"+图片限制）
 
 进点餐后**立即并行**调用（不等用户问）：
 
@@ -71,14 +79,13 @@ description: 在 WorkBuddy 对话里直接浏览麦当劳菜单、选餐加购�
 - `available-coupons()` → 可领麦麦省券（如需，先问用户再 `auto-bind-coupons()` 一键领）
 - `campaign-calendar()` → 当前活动（与第 1 步合并去重）
 
-渲染"**优惠 & 活动**"面板：券（名称 / 适用商品 `products[].productName` / 有效期 `tradeDateTime`）、活动（标题 / 优惠 / 领券）。
+渲染"**优惠 & 活动**"面板（emoji + 文字）：券（名称 / 适用商品 `products[].productName` / 有效期 `tradeDateTime`）、活动（标题 / 优惠 / 领券链接）。
 
-随后拉菜单并**带图**渲染：
+随后拉菜单并呈现（**图片走链接，不内嵌面板**）：
 
 1. `query-meals(storeCode, orderType, beType)` → `categories[].meals[].code`。
 2. 对每个要展示的餐品调 `query-meal-detail(storeCode, orderType, beType, code)` 拿 `name` / `image` / `rounds` / `modification` / `supportModify`。
-3. 用 `show_widget` 渲染**菜单分类卡片**：`<img src="{image}">` + 名称 + 标签；`image` 为真实 https URL（`https://menu-img.mcd.cn/...`），**务必内嵌 `<img>` 标签**才能显示。
-   - 加 `onerror` 回退：图片加载失败时显示 `🍔 {name}`，保证卡片永远有内容。
+3. 用 `show_widget` 渲染**菜单分类卡片**（emoji 图标 + 名称 + 标签 + 描述），并在聊天气泡中以 Markdown 链接给出图片：`🖼 [名称]({image})`，用户点开浏览器看原图；卡片内也可放 `<a href="{image}">查看图片 ↗</a>`。
    - 套餐用 `rounds` 展示可选组合；`supportModify=true` 在名称后标【可特调】，特调项用 `modification`（仅用户主动问才展开）。
 4. 与用户自然语言沟通确定点餐内容：支持"加一个巨无霸""饮料换可乐""不要薯条"；套餐子项经 `roundList[].comboItemList` 构造。
 
@@ -91,7 +98,7 @@ description: 在 WorkBuddy 对话里直接浏览麦当劳菜单、选餐加购�
 - 如用户指定用某券，把 `couponId`/`couponCode` 带入对应 item
 - **价格单位为「分」**，所有展示值 ÷100 转「元」
 
-用 `show_widget` 渲染**购物车卡片**：单价、优惠、应付(元)、取餐方式。
+用 `show_widget` 渲染**购物车卡片**（emoji + 单价、优惠、应付(元)、取餐方式）。
 
 ### 第 4 步 · 确认下单（一张总单，问是否同意；不原则问原因）
 
@@ -106,16 +113,17 @@ description: 在 WorkBuddy 对话里直接浏览麦当劳菜单、选餐加购�
 
 1. 调用 `create-order`，参数：`storeCode`, `orderType`, `beType`, `items[{productCode, quantity, couponId?, couponCode?, modification?, roundList?}]`, `takeWayCode`(到店必传), `addressId`(外送必传), `reservationDate`(预约场景), `remark`(外送备注≤50字), `needTableware`。
 2. **`create-order` 返回订单详情 + 支付链接/二维码**（官方文档确认；v1.0.9 起堂食外带还返回取餐柜二维码）。
-3. 提取返回中的支付字段（`payUrl` / `paymentUrl` / `qrCode` / 取餐柜二维码等），用 `show_widget` 渲染：
-   - **可点击支付链接** + **二维码图片**，提示"**在此直接支付 / 扫码即可，无需跳转麦当劳 App**"
+3. 提取返回中的支付字段（`payUrl` / `paymentUrl` / `qrCode` / 取餐柜二维码等），用 `show_widget` 渲染（emoji + 文字 + 链接）：
+   - **可点击支付链接** + **二维码图片链接**，提示"**在此直接支付 / 扫码即可，无需跳转麦当劳 App**"
    - 若为 `mcdapp://` 深链，提示点按用麦当劳 App 打开
 4. 附：`query-order(orderId)` 查支付/配送状态、`cancel-order(orderId)` 取消。
 
-## 渲染约定（AI2UI）
+## 渲染约定（AI2UI，已适配面板图片限制）
 
-- 门店、菜单、购物车、订单、支付均优先用 `show_widget` 渲染为内联 HTML 卡片 / 面板，图片用 `<img src>` 内嵌，`onerror` 回退。
-- 图片 URL 来自 `query-meal-detail.image`（真实 https，可直接渲染）。
-- 若 `show_widget` 不可用，退化为结构化列表 + Markdown 图片语法 `![name](url)`，效果等价。
+- 门店、菜单、购物车、订单、支付均用 `show_widget` 渲染为内联 HTML 卡片；卡片用 **emoji + 文字**，**不内嵌 `<img>`**（面板不加载外部图片）。
+- 餐品真实图片以 **Markdown 链接** 形式放在聊天气泡中（点开浏览器看原图），如 `🖼 [巨无霸](https://menu-img.mcd.cn/...)`。
+- 若 `show_widget` 不可用，退化为结构化文本列表 + Markdown 链接，效果等价。
+- 浏览器端视觉 Demo 见 `preview.html`（内嵌真实 `<img>`，仅用于展示）。
 
 ## 安全与合规
 
@@ -129,3 +137,4 @@ description: 在 WorkBuddy 对话里直接浏览麦当劳菜单、选餐加购�
 
 - 麦当劳 MCP 工具清单与接入：https://github.com/M-China/mcd-mcp-server
 - 集成说明：见本仓库 `MCP_INTEGRATION.md`
+- 可运行参考实现（源码）：见 `src/mcd_mcp_client.py`

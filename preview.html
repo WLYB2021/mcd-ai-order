@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>麦麦AI点单助手 · AI2UI 预览</title>
+<title>麦麦AI点单助手 · AI2UI 预览（浏览器视觉 Demo）</title>
 <style>
   :root{
     --bg:#f6f7f9; --card:#ffffff; --line:#e6e8eb; --text:#1f2329; --sub:#6b7280;
@@ -16,16 +16,24 @@
   .logo{width:42px;height:42px;border-radius:12px;background:var(--brand);display:flex;align-items:center;justify-content:center;font-size:22px}
   h1{font-size:22px}
   .tag{font-size:12px;color:var(--sub);background:var(--chip);padding:2px 8px;border-radius:999px}
-  .note{font-size:12px;color:var(--sub);margin:8px 0 18px}
-  .store{display:flex;gap:8px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin-bottom:18px}
+  .banner{font-size:12.5px;line-height:1.7;color:#8a5a00;background:#fff8e6;border:1px solid #ffe2a8;border-radius:12px;padding:10px 14px;margin:10px 0 18px}
+  .banner b{color:#a05a00}
+  .store{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin-bottom:14px}
   .store b{font-size:14px}
   .store .pill{font-size:12px;color:#fff;background:var(--brand-d);padding:2px 8px;border-radius:999px}
+  .store .resv{font-size:12px;color:var(--green);background:#e7f6ee;padding:2px 8px;border-radius:999px}
+  .coupon{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:18px}
+  .coupon h3{font-size:14px;margin-bottom:8px}
+  .coupon .row{font-size:13px;color:var(--sub);padding:4px 0}
+  .coupon .row .ok{color:var(--green)}
   .grid{display:grid;grid-template-columns:1.6fr 1fr;gap:18px}
   .menu{display:flex;flex-direction:column;gap:12px}
   .cat{font-size:13px;color:var(--sub);margin:6px 2px 0}
-  .item{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;justify-content:space-between;align-items:center}
+  .item{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;gap:12px;align-items:center}
+  .thumb{width:64px;height:64px;border-radius:12px;background:var(--chip);flex:0 0 auto;object-fit:cover;display:flex;align-items:center;justify-content:center;font-size:30px}
+  .item .body{flex:1}
   .item .name{font-size:15px;font-weight:600}
-  .item .meta{font-size:12px;color:var(--sub);margin-top:4px}
+  .item .meta{font-size:12px;color:var(--sub);margin-top:3px}
   .chips{margin-top:6px;display:flex;gap:6px;flex-wrap:wrap}
   .chip{font-size:11px;background:var(--chip);color:#8a6d00;padding:2px 7px;border-radius:999px}
   .price{font-size:16px;font-weight:700;color:var(--red);white-space:nowrap}
@@ -39,6 +47,8 @@
   .btn{margin-top:14px;width:100%;background:var(--brand);color:#3a2c00;border:none;border-radius:12px;padding:12px;font-size:15px;font-weight:700;cursor:pointer}
   .btn:hover{background:var(--brand-d)}
   .hint{font-size:11px;color:var(--sub);margin-top:8px;text-align:center}
+  .imglink{font-size:12px;color:var(--sub);margin-top:6px}
+  .imglink a{color:#1a73e8;text-decoration:none}
 </style>
 </head>
 <body>
@@ -48,59 +58,79 @@
     <h1>麦麦AI点单助手</h1>
     <span class="tag">AI2UI · 对话即界面</span>
   </div>
-  <div class="note">⚠️ 以下为 UI 形态预览，数据均为示例，仅用于展示；真实菜单/价格来自麦当劳 MCP 实时接口。</div>
+
+  <div class="banner">
+    ⚠️ <b>关于图片：</b>WorkBuddy 内联面板出于安全限制<b>不加载外部图片</b>，因此 Skill 在面板内统一用 <b>emoji 卡片 + 文字</b> 呈现，餐品真实图片以 <b>Markdown 链接</b> 提供（点开浏览器看原图）。本页是<b>浏览器端视觉 Demo</b>，这里图片可正常加载，用于对外展示界面形态。下方每张卡片同时给出 <b>🖼 图片链接</b> 示例。
+  </div>
 
   <div class="store">
-    📍 <b>国贸 TR 餐厅</b> <span class="pill">到店自取</span>
-    <span style="color:var(--sub);font-size:12px">由 <code>query-nearby-stores</code> 选择</span>
+    📍 <b>麦当劳北京建外SOHO(A座)餐厅</b> <span class="pill">到店自取</span>
+    <span class="resv">✅ 支持预约：夜市 17:14–21:45</span>
+    <span style="color:var(--sub);font-size:12px">由 <code>query-nearby-stores</code> 选择（storeCode 1950564）</span>
+  </div>
+
+  <div class="coupon">
+    <h3>🎟️ 优惠 &amp; 活动（进点餐即主动拉取）</h3>
+    <div class="row"><span>本店券：龙焰鸡腿堡三件套券</span><span class="ok">-¥6.0</span></div>
+    <div class="row"><span>卡包券：麦麦省 -¥5 无门槛</span><span class="ok">-¥5.0</span></div>
+    <div class="row"><span>🎉 今日活动：9.9 元早餐两件套 · 麦旋风任选券</span><span class="ok">领券</span></div>
   </div>
 
   <div class="grid">
     <div class="menu">
-      <div class="cat">人气套餐</div>
+      <div class="cat">人气热卖</div>
       <div class="item">
-        <div>
-          <div class="name">麦辣鸡腿堡套餐</div>
-          <div class="meta">鸡腿堡 + 薯条(中) + 饮料，可替换</div>
-          <div class="chips"><span class="chip">🔥 约 780 kcal</span><span class="chip">可换饮料</span></div>
+        <img class="thumb" src="https://menu-img.mcd.cn/pcm/prod/menu/ProductPool/product/MS_9900016076_600.png" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'thumb',textContent:'🍱'}))" alt="" />
+        <div class="body">
+          <div class="name">"我就喜欢"鸡薯双全盒</div>
+          <div class="meta">心形薯饼 + 鸡块，限定</div>
+          <div class="chips"><span class="chip">#心形薯饼同款比心</span></div>
+          <div class="imglink">🖼 <a href="https://menu-img.mcd.cn/pcm/prod/menu/ProductPool/product/MS_9900016076_600.png" target="_blank" rel="noopener">图片链接</a></div>
         </div>
-        <div class="price">¥32.5</div>
+        <div class="price">¥39.9</div>
       </div>
       <div class="item">
-        <div>
-          <div class="name">巨无霸套餐</div>
-          <div class="meta">巨无霸 + 薯条(中) + 饮料</div>
-          <div class="chips"><span class="chip">🔥 约 840 kcal</span><span class="chip">经典</span></div>
+        <img class="thumb" src="https://menu-img.mcd.cn/pcm/prod/menu/ProductPool/product/MS_9900016073_600.png" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'thumb',textContent:'🍗'}))" alt="" />
+        <div class="body">
+          <div class="name">龙焰鸡腿堡三件套</div>
+          <div class="meta">韩式辣椒黄油风味鸡腿堡 + 薯条 + 饮料</div>
+          <div class="chips"><span class="chip">#韩式辣椒黄油风味</span><span class="chip">可换饮料</span></div>
+          <div class="imglink">🖼 <a href="https://menu-img.mcd.cn/pcm/prod/menu/ProductPool/product/MS_9900016073_600.png" target="_blank" rel="noopener">图片链接</a></div>
         </div>
-        <div class="price">¥41.0</div>
-      </div>
-      <div class="cat">单点</div>
-      <div class="item">
-        <div>
-          <div class="name">麦辣鸡腿堡</div>
-          <div class="meta">单品</div>
-          <div class="chips"><span class="chip">🔥 约 490 kcal</span></div>
-        </div>
-        <div class="price">¥21.0</div>
+        <div class="price">¥34.5</div>
       </div>
       <div class="item">
-        <div>
-          <div class="name">可乐(中)</div>
-          <div class="meta">饮料</div>
-          <div class="chips"><span class="chip">🥤 冰/常温</span></div>
+        <img class="thumb" src="https://menu-img.mcd.cn/pcm/prod/menu/ProductPool/product/MS_1100_600.png" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'thumb',textContent:'🍔'}))" alt="" />
+        <div class="body">
+          <div class="name">巨无霸</div>
+          <div class="meta">经典双层牛肉堡</div>
+          <div class="chips"><span class="chip">经典</span></div>
+          <div class="imglink">🖼 <a href="https://menu-img.mcd.cn/pcm/prod/menu/ProductPool/product/MS_1100_600.png" target="_blank" rel="noopener">图片链接</a></div>
         </div>
-        <div class="price">¥9.0</div>
+        <div class="price">¥25.5</div>
+      </div>
+      <div class="item">
+        <img class="thumb" src="https://menu-img.mcd.cn/pcm/prod/menu/ProductPool/product/MS_521954_600.png" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'thumb',textContent:'🧢'}))" alt="" />
+        <div class="body">
+          <div class="name">麦当劳联名复古棒球帽</div>
+          <div class="meta">周边商品</div>
+          <div class="chips"><span class="chip">周边</span></div>
+          <div class="imglink">🖼 <a href="https://menu-img.mcd.cn/pcm/prod/menu/ProductPool/product/MS_521954_600.png" target="_blank" rel="noopener">图片链接</a></div>
+        </div>
+        <div class="price">¥69.0</div>
       </div>
     </div>
 
     <div class="cart">
       <h2>🛒 购物车</h2>
-      <div class="row"><span>麦辣鸡腿堡套餐(可乐)</span><span>¥32.5</span></div>
-      <div class="row"><span class="m">− 麦麦省券</span><span class="disc">-¥5.0</span></div>
+      <div class="row"><span>龙焰鸡腿堡三件套(可乐)</span><span>¥34.5</span></div>
+      <div class="row"><span>巨无霸</span><span>¥25.5</span></div>
+      <div class="row"><span class="m">− 本店券</span><span class="disc">-¥6.0</span></div>
+      <div class="row"><span class="m">− 麦麦省卡包券</span><span class="disc">-¥5.0</span></div>
       <div class="row"><span class="m">配送费(到店免)</span><span>¥0.0</span></div>
-      <div class="total"><span>应付</span><span class="big">¥27.5</span></div>
+      <div class="total"><span>应付</span><span class="big">¥49.0</span></div>
       <button class="btn">确认结账 →</button>
-      <div class="hint">由 <code>calculate-price</code> 实时算价，确认后 <code>create-order</code> 下单</div>
+      <div class="hint">由 <code>calculate-price</code> 实时算价（单位「分」÷100），确认后 <code>create-order</code> 下单并返回支付链接</div>
     </div>
   </div>
 </div>

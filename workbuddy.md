@@ -8,8 +8,9 @@
 1. **需求确认**：用户在 WorkBuddy 中提出"想参加麦当劳 MCP 开发大赛"，并明确希望做一个 **AI2UI 点单 Skill**——让 Agent 在 WorkBuddy 对话里直接展示菜单并帮用户下单。
 2. **竞品调研**：WorkBuddy 抓取并分析了活动 Issue 列表（约 13 个报名），发现现有作品集中在"省钱精算"与"营养减脂"两类文字推荐型 Skill，**尚无"对话内可视化点单 + 真实下单"的 AI2UI 实现**，据此确定差异化方向。
 3. **MCP 能力核验**：WorkBuddy 直接调用 `mcd-mcp` 的 `tools/list`，实测确认服务器可用、Token 有效，并核对了 35 个线上工具（含文档未收录的 `query-promotions`、`query-survey-coupon`）。
-4. **仓库搭建**：WorkBuddy 生成了完整的参赛仓库文件，包括 `SKILL.md`、`MCP_INTEGRATION.md`、`README.md`、`mcp-config.example.json`、`CONTEST_DECLARATION.md`、本文件与 `preview.html`。
+4. **仓库搭建**：WorkBuddy 生成了完整的参赛仓库文件，包括 `SKILL.md`、`MCP_INTEGRATION.md`、`README.md`、`mcp-config.example.json`、`CONTEST_DECLARATION.md`、本文件与 `preview.html`；后续补齐了零依赖可运行源码 `src/mcd_mcp_client.py`（直连麦当劳 MCP 复刻点单流程，可作调试/演示）。
 5. **安全设计**：WorkBuddy 在 Skill 中内置"下单前必须用户二次确认"的强制守卫，避免误下真实订单。
+6. **图片渲染决策**：用户全流程实测发现 WorkBuddy 内联面板不加载外部图片，WorkBuddy 据此将菜单呈现改为「emoji 文字卡片 + 图片 Markdown 链接（浏览器打开）」，并刷新 `preview.html` 作为浏览器端带真实图片的视觉 Demo。
 
 ## 二、关键对话节点（节选）
 
