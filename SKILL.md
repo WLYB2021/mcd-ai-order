@@ -1,19 +1,22 @@
 ---
 name: 麦麦AI点单助手
-description: 在 WorkBuddy 对话里直接浏览麦当劳菜单、选餐加购、实时计算券后价并一键下单的 AI2UI 点单 Skill。当用户说"帮我点麦当劳""看看今天有啥吃的""我想点个麦辣鸡腿堡""帮我下单/结账"时使用。
+description: 在 WorkBuddy 对话里直接浏览麦当劳菜单、选餐加购、实时计算券后价并一键下单的 AI2UI 点单 Skill。当用户说"帮我点麦当劳""看看今天有啥吃的""我想点个巨无霸""帮我下单/结账"时使用。
 ---
 
 # 麦麦AI点单助手 (McdAIPoint)
 
-把麦当劳点餐做成"**对话即界面（AI2UI）**"：用户不用打开 App，在 WorkBuddy 里一句话就能看菜单、选餐、算最便宜的价格、确认后下单并拿到支付链接。
+把麦当劳点餐做成"**对话即界面（AI2UI）**"：用户不用打开 App，在 WorkBuddy 里一句话就能看菜单、选餐、算最便宜的价格、确认后下单并拿到支付链接。底层全部走麦当劳官方 MCP（`mcd-mcp`）。
 
 ## 核心定位：AI2UI
 
 传统做法是 Agent 输出一段文字推荐。本 Skill 用 **AI 直接生成 UI**：
 
-- 用**卡片式菜单**（分类 / 名称 / 价格 / 标签 / 热量）呈现 `query-meals` 的结果
-- 用**"购物车 + 实时报价"**呈现 `calculate-price` 的结果
-- 用户通过自然语言（"加一个麦辣鸡腿堡""饮料换成可乐""不要薯条"）完成操作，Agent 负责把意图翻译成麦当劳 MCP 工具调用
+- 用**门店卡片**呈现 `query-nearby-stores` 结果（店名 / 地址 / 距离 / 营业状态）
+- 用**菜单分类卡片**呈现 `query-meals` 的结果：每个餐品用 `query-meal-detail` 拿到的 `name` + `image`（图片 URL）+ `tags` 渲染成可点卡片
+- 用**"购物车 + 实时报价"**呈现 `calculate-price` 的结果（`productPrice` / `originalPrice` / `discount` / `price`）
+- 用户通过自然语言（"加一个巨无霸""饮料换成可乐""不要薯条"）完成操作，Agent 负责把意图翻译成麦当劳 MCP 工具调用
+
+> 渲染卡片优先用 WorkBuddy 的 `show_widget`（传入 `image` 图片 URL 做可视化卡片）；若不可用在对话中以结构化列表呈现，效果等价。
 
 ## 前置条件
 
@@ -23,14 +26,49 @@ description: 在 WorkBuddy 对话里直接浏览麦当劳菜单、选餐加购�
 ## 执行流程（严格按顺序）
 
 1. **确认场景**：询问用户「到店自取」还是「麦乐送外送」。
+   - 到店：`orderType=1`，`beType=1`
+   - 外送：`orderType=2`，`beType=1`（外送地址走 `delivery-query-addresses` / `delivery-create-address` / `delivery-query-stores` 分支）
+
 2. **定位门店**
-   - **到店**：调用 `query-nearby-stores`（到店自取传 `beType=1`），列出附近门店让用户选择。
-   - **外送**：调用 `delivery-query-addresses` 取已有配送地址；若无地址，用 `delivery-create-address` 新建；再用 `delivery-query-stores` 取可配送门店。
-3. **展示菜单（AI2UI）**：调用 `query-meals`（带 `storeId` + `orderType`）拿到菜单，用卡片 UI 分分类展示（名称、价格、标签、热量）。可用 `list-nutrition-foods` 补充热量标签。
-4. **选餐加购**：用户用自然语言点餐，Agent 解析为餐品 `code` 列表。套餐可用 `query-meal-detail` 展示组成 / 可替换项。
-5. **算价（含券）**：调用 `query-store-coupons`（到店）或 `query-my-coupons` + `available-coupons`（外送）找可用券，调用 `calculate-price` 计算商品金额、优惠、配送费、应付总价，用"购物车"UI 展示明细。
-6. **⚠️ 确认下单（强制守卫）**：把最终订单（门店、商品、优惠、应付金额）完整念给用户，**必须等用户明确说"确认 / 下单 / 结账"后才调用 `create-order`**。绝不在未确认时下单，绝不猜测用户意图自动下单。
-7. **下单**：`create-order` 返回订单详情与支付链接，转给用户。可提示用 `query-order` 查进度、`cancel-order` 取消。
+   - 调用 `query-nearby-stores`，参数：`beType=1`、`searchType=2`（关键词搜索模式）、`city`（如"北京"）、`keyword`（如"国贸"）。
+   - 返回 `data[]`，每条含：`storeCode`（门店唯一编号，后续所有入参都用它）、`storeName`、`address`、`distance`、`businessStatus`、`businessStartTime` / `businessEndTime`、`reservation`（是否支持预约）、`reservationTimeOptions`。
+   - 用**门店卡片**展示，让用户选择 → 记下 `storeCode`。（`beCode` 通常返回空，非必填，忽略即可。）
+
+3. **展示菜单（AI2UI）**
+   - 调用 `query-meals`，参数：`storeCode`、`orderType`、`beType`。
+   - 返回 `data.categories[]`：`{ name: 分类名, meals: [{ code, tags[] }] }`。
+   - ⚠️ `query-meals` **只给 `code` + `tags`，不含名称/图片/价格**。为渲染卡片，对每个要展示的餐品调用 `query-meal-detail`（`storeCode`+`orderType`+`beType`+`code`）拿 `name`、`image`（图片 URL）、`modification`（可选加料项）。
+   - 用**菜单分类卡片**（图 + 名 + 标签）呈现，用户点击或自然语言点餐。
+
+4. **选餐加购**
+   - 用户自然语言点餐 → Agent 解析为 `items: [{ code, quantity }]`（注意字段是 `quantity`，不是 `count`）。
+   - 套餐/单品可用 `query-meal-detail` 的 `modification.items` 展示可选加料（如巨无霸酱、吉士，通常 `price:0` 免费），用户可调整选择。
+
+5. **算价（含券）**
+   - 可选：先 `auto-bind-coupons` 一键领麦麦省券，或 `query-store-coupons`(到店) / `query-my-coupons`(卡包) 找可用券。
+   - 调用 `calculate-price`，参数：`storeCode`、`orderType`、`beType`、`items:[{code, quantity}]`（可带 `takeWayCode` 取餐方式）。
+   - 返回 `data`：`productOriginalPrice`、`productPrice`、`originalPrice`、`discount`、`price`（应付总价）、`productList[]`、`takeWayList[]`（取餐方式：`eat-in` 堂食 / `take-in-store` 外带）。
+   - 用**购物车卡片**展示明细（单价、优惠、应付、取餐方式）。
+
+6. **⚠️ 确认下单（强制守卫）**
+   - 把最终订单（门店、商品、优惠、应付金额、取餐方式）完整念给用户，**必须等用户明确说"确认 / 下单 / 结账"后才调用 `create-order`**。
+   - 绝不在未确认时下单，绝不猜测用户意图自动下单。
+
+7. **下单**
+   - `create-order` 参数：`storeCode`、`orderType`、`beType`、`items:[{code, quantity}]`、`takeWayCode`（取餐方式码，来自 `takeWayList`）、`needTableware`（是否需要餐具）、`remark`（备注）。
+   - 返回订单详情与支付链接，转给用户。可提示 `query-order` 查进度、`cancel-order` 取消。
+
+## 真实字段速查
+
+| 工具 | 必填参数 | 关键返回 |
+|---|---|---|
+| query-nearby-stores | `beType`, `searchType=2`, `city`, `keyword` | `data[].storeCode` / `storeName` / `address` / `distance` / `businessStatus` |
+| query-meals | `storeCode`, `orderType`, `beType` | `data.categories[].meals[].code` / `tags` |
+| query-meal-detail | `storeCode`, `orderType`, `beType`, `code` | `data.name` / `image` / `modification.items` |
+| calculate-price | `storeCode`, `orderType`, `beType`, `items[{code,quantity}]` | `data.price` / `productPrice` / `discount` / `productList` / `takeWayList` |
+| create-order | `storeCode`, `orderType`, `beType`, `items[{code,quantity}]`, `takeWayCode` | 订单详情 + 支付链接 |
+
+> 注：`storeCode` 为门店唯一编号（实测为整数，如 `1950564`）；餐品 `code` 为字符串（如 `"1100"` 巨无霸、`"9900005411"` 套餐）。`query-meals` 的 `meals` 仅含 `code`+`tags`，名称与图片需 `query-meal-detail` 补充，价格需 `calculate-price` 计算。
 
 ## 安全与合规
 
